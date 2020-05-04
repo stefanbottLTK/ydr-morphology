@@ -3,7 +3,10 @@ import click
 import re
 import json
 
-def get_form_from_db(lemma, pos):
+def get_form_from_db(event, context):
+    event_body = json.loads(event['body'])
+    lemma = (event_body['lemma'])
+    pos = (event_body['pos'])
     try:
         connection = psycopg2.connect(user = "yourdictionary",
                                       password = "DQBx5TKaD5Xe6QRi",
@@ -36,7 +39,11 @@ def get_form_from_db(lemma, pos):
                 connection.close()
                 # print("PostgreSQL connection is closed")
 
-def get_analyisis_from_db(form):
+def get_analyisis_from_db(event, context):
+    event_body = json.loads(event['body'])
+    form = event_body['form']
+    results_list = []
+
     try:
         connection = psycopg2.connect(user = "yourdictionary",
                                       password = "DQBx5TKaD5Xe6QRi",
@@ -56,7 +63,12 @@ def get_analyisis_from_db(form):
         sql_sting = (f"SELECT lemma, postag FROM morphology WHERE wordform='{form}' ")
         click.echo(sql_sting)
         cursor.execute(sql_sting)
-        click.echo(cursor.fetchone())
+        rows = cursor.fetchall()
+        click.echo(rows)
+        for row in rows:
+            # click.echo(row[0] + "\t..")
+            this_result = {"pos" : row[1], "form" : row[0]}
+            results_list.append(this_result)
         click.echo("")
         connection.commit()
 
@@ -69,10 +81,13 @@ def get_analyisis_from_db(form):
                 connection.close()
                 # print("PostgreSQL connection is closed")
 
-@click.command()
-@click.option('--pos', help="The PEN Treebank POS tag")
-@click.option('--lemma', help="The lemma")
-@click.option('--form', help="The inflected word form")
+    response = {
+        'statusCode': 200,
+        'body': json.dumps(results_list)
+    }
+    return response
+
+
 def morphology(pos,lemma,form):
     if (pos is not None) and (lemma is not None):
         get_form_from_db(lemma, pos)
@@ -80,6 +95,8 @@ def morphology(pos,lemma,form):
         get_analyisis_from_db(form)
     else:
         click.echo("either specify a word form or a pair of lemma-and-POS-tag")
+
+
 
 
 if __name__ == '__main__':
