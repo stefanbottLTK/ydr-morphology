@@ -22,10 +22,14 @@ service: ydr-morphology
 
 provider:
   name: aws
-  runtime: python3.8
+  runtime: python3.7
   stage: dev
+  apiName: ydr-morphology-${opt:stage, 'dev'}
+  region: us-east-1
   logRetentionInDays: 7
-  iamRoleStatements: 
+  timeout: 30
+  memorySize: 256
+  iamRoleStatements:
     - Effect: Allow
       Action:
         - logs:CreateLogGroup
@@ -74,37 +78,32 @@ package:
 #    - exclude-me.py
 #    - exclude-me-dir/**
 
-functions:
-  hello:
-    handler: handler.hello
-
   getMorphGeneration:
     handler: GetMorphFromDB.get_form_from_db
-    timeout: 30
-    memorySize: 256
     events:
-      - hppt:
-        path: morph/getAnalysis
-        method: post
-        cors: true
+      - http:
+          path: morph/getAnalysis/{lemma}/{pos}
+          method: get
+          cors: true
 
   getMorphAnalysis:
     handler: GetMorphFromDB.get_analyisis_from_db
-    timeout: 30
-    memorySize: 256
     events:
-      - hppt:
-        path: morph/getAnalysis
-        method: post
-        cors: true
+      - http:
+          path: morph/getAnalysis/{form}
+          method: get
+          cors: true
     environment:
       DB_URL: REPLACE_ME_WITH_SECRET
 
-
-
-  main:
-    handler: GetMorphFromDB.validate
-
+plugins:
+  - serverless-python-requirements
+  - serverless-plugin-include-dependencies
+custom:
+  pythonRequirements:
+    dockerizePip: false
+    useStaticCache: false
+    useDownloadCache: false
 
 #    The following are a few example events you can configure
 #    NOTE: Please make sure to change your handler code to work with those events
